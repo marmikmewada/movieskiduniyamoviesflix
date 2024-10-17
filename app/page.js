@@ -44,7 +44,17 @@ export default function Home() {
     item.downloadLinks.some(link => link.subLinks.length > 0)
   );
 
-  const filteredMovies = validDownloadLinks?.filter(item => 
+  const uniqueMovies = validDownloadLinks?.reduce((acc, current) => {
+    const movieName = extractMovieName(current.url);
+    const x = acc.find(item => extractMovieName(item.url) === movieName);
+    if (!x) {
+      return acc.concat([current]);
+    } else {
+      return acc;
+    }
+  }, []);
+
+  const filteredMovies = uniqueMovies?.filter(item => 
     extractMovieName(item.url).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -56,7 +66,7 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white">
       <header ref={headerRef} className="p-4 fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out" style={{ backgroundColor: `rgba(17, 17, 17, ${headerOpacity})` }}>
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-white">MARMIK's Movie Hub</h1>
+          <h1 className="text-3xl font-bold text-white">MARMIK&apos;s Movie Hub</h1>
           <div className="relative">
             <input 
               type="text"
@@ -148,7 +158,7 @@ export default function Home() {
       </main>
 
       <footer className="mt-8 p-4 bg-[#111] text-center text-[#888]">
-        <p>&copy; 2024 MARMIK's Movie Hub. All rights reserved.</p>
+        <p>&copy; 2024 MARMIK&apos;s Movie Hub. All rights reserved.</p>
         <p className="mt-2">For web, Android, iOS, and cybersecurity tasks, contact: <a href="mailto:paraboyyy1704@gmail.com" className="text-[#0070f3] hover:underline transition-colors duration-300">paraboyyy1704@gmail.com</a></p>
       </footer>
 
