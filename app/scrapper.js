@@ -3,18 +3,22 @@ const fs = require('fs');
 const path = require('path');
 
 const scrapeData = async () => {
+    console.log('Starting the scraping process...'); // Log the start of the process
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
 
     try {
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+        console.log('Navigating to the main page...');
         await page.goto('https://themoviesflix.beer/');
 
         const links = await page.$$eval('a', elements => elements.map(el => el.href).filter(href => href));
+        console.log(`Found ${links.length} links on the main page.`);
         const results = [];
 
         for (const link of links) {
             try {
+                console.log(`Visiting link: ${link}`);
                 await page.goto(link);
 
                 const categories = await page.$$eval('div.thecategory a', elements => elements.map(el => el.href));
@@ -25,6 +29,7 @@ const scrapeData = async () => {
 
                 for (const downloadLink of downloadLinks) {
                     try {
+                        console.log(`Visiting download link: ${downloadLink}`);
                         await page.goto(downloadLink);
                         const subDownloadLinks = await page.$$eval('div.view-links a', elements => elements.map(el => el.href));
                         allDownloadLinks.push({ downloadLink, subLinks: subDownloadLinks });
@@ -48,6 +53,7 @@ const scrapeData = async () => {
         console.error(`Error fetching main page: ${error.message}`);
     } finally {
         await browser.close();
+        console.log('Browser closed. Scraping process finished.'); // Log when the process is complete
     }
 };
 
