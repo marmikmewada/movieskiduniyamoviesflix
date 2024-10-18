@@ -1,6 +1,6 @@
 // app/api/scheduler/route.js
 import cron from 'node-cron';
-import scrapeData from '../../scrapper'; // Adjust the path as needed
+import scrapeLinks from '../../scrapper'; // Adjust the path as needed
 
 let isSchedulerRunning = false;
 
@@ -12,7 +12,7 @@ const startScheduler = async () => {
 
     try {
         // Run the scraper immediately on app start
-        await scrapeData();
+        await scrapeLinks();
     } catch (error) {
         console.error('Error during initial scraping:', error.message);
     }

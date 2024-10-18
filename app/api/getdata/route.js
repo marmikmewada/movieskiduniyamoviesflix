@@ -26,9 +26,44 @@ export async function GET(req) {
 
         // Parse the JSON data
         const jsonData = JSON.parse(data);
-        
-        // Return the data as a JSON response
-        return new Response(JSON.stringify(jsonData), {
+
+        // Organize data by category, filter out items without relevant links, and remove duplicates
+        const organizedData = jsonData.reduce((acc, item) => {
+            const category = item.parentLink;
+
+            // Initialize the category in the accumulator if not present
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+
+            // Filter out items with no href in relevantLinks
+            if (item.relevantLinks && item.relevantLinks.some(link => link.href)) {
+                const newItem = {
+                    childLink: item.childLink,
+                    title: item.title,
+                    imgSrc: item.imgSrc,
+                    relevantLinks: item.relevantLinks.filter(link => link.href), // Keep only links with href
+                };
+
+                // Check for duplicates
+                const isDuplicate = acc[category].some(existingItem => 
+                    existingItem.childLink === newItem.childLink &&
+                    existingItem.title === newItem.title &&
+                    existingItem.imgSrc === newItem.imgSrc &&
+                    JSON.stringify(existingItem.relevantLinks) === JSON.stringify(newItem.relevantLinks)
+                );
+
+                // Push newItem only if it's not a duplicate
+                if (!isDuplicate) {
+                    acc[category].push(newItem);
+                }
+            }
+
+            return acc;
+        }, {});
+
+        // Return the organized data as a JSON response
+        return new Response(JSON.stringify(organizedData), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });

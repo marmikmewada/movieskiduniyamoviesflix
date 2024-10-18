@@ -1,15 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from "next/image";
+import Image from 'next/image';
 
 const extractMovieName = (url) => {
   const match = url.match(/\.beer\/(.*?)(?:\/|$)/);
   return match ? decodeURIComponent(match[1].replace(/-/g, ' ')) : 'Unknown Movie';
 };
 
+const extractCategoryName = (url) => {
+  const match = url.match(/\/category\/(.*?)(?:\/|$)/);
+  return match ? decodeURIComponent(match[1].replace(/-/g, ' ')) : 'Unknown Category';
+};
+
 export default function Home() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState({});
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCards, setExpandedCards] = useState({});
@@ -21,6 +26,7 @@ export default function Home() {
       try {
         const response = await fetch('/api/getdata');
         const result = await response.json();
+        console.log(result);
         setData(result);
       } catch (err) {
         setError('Failed to load data');
@@ -40,26 +46,16 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const validDownloadLinks = data?.filter(item => 
-    item.downloadLinks.some(link => link.subLinks.length > 0)
-  );
+  const filteredMoviesByCategory = Object.entries(data).map(([category, movies]) => {
+    const filteredMovies = movies.filter(movie =>
+      extractMovieName(movie.childLink).toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-  const uniqueMovies = validDownloadLinks?.reduce((acc, current) => {
-    const movieName = extractMovieName(current.url);
-    const x = acc.find(item => extractMovieName(item.url) === movieName);
-    if (!x) {
-      return acc.concat([current]);
-    } else {
-      return acc;
-    }
-  }, []);
-
-  const filteredMovies = uniqueMovies?.filter(item => 
-    extractMovieName(item.url).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    return { category: extractCategoryName(category), movies: filteredMovies }; // Extracting category name here
+  }).filter(({ movies }) => movies.length > 0);
 
   const toggleCardExpansion = (index) => {
-    setExpandedCards(prev => ({...prev, [index]: !prev[index]}));
+    setExpandedCards(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
   return (
@@ -68,7 +64,7 @@ export default function Home() {
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-3xl font-bold text-white">MARMIK&apos;s Movie Hub</h1>
           <div className="relative">
-            <input 
+            <input
               type="text"
               placeholder="Search for movies..."
               value={searchTerm}
@@ -84,73 +80,76 @@ export default function Home() {
 
       <main className="container mx-auto px-4 pt-24 pb-16">
         <pre className="text-center text-xs sm:text-sm md:text-base lg:text-lg font-mono mb-8 text-white font-bold">
-{`
+          {`
 ███╗   ███╗ █████╗ ██████╗ ███╗   ███╗██╗██╗  ██╗
 ████╗ ████║██╔══██╗██╔══██╗████╗ ████║██║██║ ██╔╝
 ██╔████╔██║███████║██████╔╝██╔████╔██║██║█████╔╝ 
 ██║╚██╔╝██║██╔══██║██╔══██╗██║╚██╔╝██║██║██╔═██╗ 
 ██║ ╚═╝ ██║██║  ██║██║  ██║██║ ╚═╝ ██║██║██║  ██╗
 ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═╝
-`}
+          `}
         </pre>
 
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        
-        {filteredMovies && filteredMovies.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredMovies.map((item, index) => (
-              <div key={index} className="bg-[#222] rounded-lg overflow-hidden transition-transform duration-300 hover:scale-105 shadow-lg">
-                <div className="relative">
-                  <Image
-                    src={item.imgSrc}
-                    alt={extractMovieName(item.url)}
-                    width={300}
-                    height={450}
-                    layout="responsive"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <h2 className="text-white font-bold text-lg">{extractMovieName(item.url)}</h2>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <button 
-                    className="w-full py-2 px-4 bg-[#333] text-white rounded-md hover:bg-[#444] transition-colors duration-300 flex justify-between items-center"
-                    onClick={() => toggleCardExpansion(index)}
-                  >
-                    <span>{expandedCards[index] ? 'Hide' : 'Show'} Links</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform duration-300 ${expandedCards[index] ? 'transform rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                  {expandedCards[index] && (
-                    <div className="mt-4 max-h-40 overflow-y-auto custom-scrollbar">
-                      {item.downloadLinks.map((link, linkIndex) => (
-                        link.subLinks.length > 0 && (
-                          <div key={linkIndex} className="mb-2">
-                            <h3 className="font-semibold text-sm text-[#888] mb-1">Option {linkIndex + 1}</h3>
-                            <ul className="space-y-1">
-                              {link.subLinks.map((subLink, subIndex) => (
-                                <li key={subIndex}>
-                                  <a
-                                    href={subLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[#0070f3] hover:text-[#3291ff] text-sm transition-colors duration-300"
-                                  >
-                                    Download {subIndex + 1}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
+
+        {filteredMoviesByCategory.length > 0 ? (
+          <div className="space-y-8">
+            {filteredMoviesByCategory.map(({ category, movies }) => (
+              <section key={category}>
+                <h2 className="text-2xl font-bold mb-4">{category}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {movies.map((item, index) => (
+                    <div key={index} className="bg-[#222] rounded-lg overflow-hidden transition-transform duration-300 hover:scale-105 shadow-lg">
+                      <div className="relative">
+                        <Image
+                          src={item.imgSrc}
+                          alt={extractMovieName(item.childLink)}
+                          width={300}
+                          height={450}
+                          layout="responsive"
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                          <h2 className="text-white font-bold text-lg">{extractMovieName(item.childLink)}</h2>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <button
+                          className="w-full py-2 px-4 bg-[#333] text-white rounded-md hover:bg-[#444] transition-colors duration-300 flex justify-between items-center"
+                          onClick={() => toggleCardExpansion(index)}
+                        >
+                          <span>{expandedCards[index] ? 'Hide' : 'Show'} Links</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform duration-300 ${expandedCards[index] ? 'transform rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        {expandedCards[index] && (
+                          <div className="mt-4 max-h-40 overflow-y-auto custom-scrollbar">
+                            {item.relevantLinks.map((link, linkIndex) => (
+                              <div key={linkIndex} className="mb-2">
+                                <h3 className="font-semibold text-sm text-[#888] mb-1">Download Option {linkIndex + 1}</h3>
+                                <ul className="space-y-1">
+                                  <li>
+                                    <a
+                                      href={link.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[#0070f3] hover:text-[#3291ff] text-sm transition-colors duration-300"
+                                    >
+                                      {link.text}
+                                    </a>
+                                  </li>
+                                </ul>
+                              </div>
+                            ))}
                           </div>
-                        )
-                      ))}
+                        )}
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-            ))}
+              </section>
+            ))} 
           </div>
         ) : (
           <p className="text-center text-[#888]">No valid download links available.</p>
@@ -169,25 +168,13 @@ export default function Home() {
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: #333;
-          border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #666;
+          background: #555;
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #888;
-        }
-
-        /* For Firefox */
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: #666 #333;
-        }
-
-        /* Smooth scrolling for the whole page */
-        html {
-          scroll-behavior: smooth;
+          background: #777;
         }
       `}</style>
     </div>
